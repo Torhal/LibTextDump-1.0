@@ -243,6 +243,10 @@ end
 -----------------------------------------------------------------------
 function prototype:AddLine(text)
 	self:InsertLine(#buffers[self] + 1, text)
+
+	if lib.frames[self]:IsVisible() then
+		self:Display()
+	end
 end
 
 
