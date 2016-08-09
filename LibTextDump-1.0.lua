@@ -4,6 +4,7 @@
 local _G = getfenv(0)
 
 -- Functions
+local date = _G.date
 local error = _G.error
 local type = _G.type
 
@@ -241,8 +242,8 @@ end
 -----------------------------------------------------------------------
 -- Instance methods.
 -----------------------------------------------------------------------
-function prototype:AddLine(text)
-	self:InsertLine(#buffers[self] + 1, text)
+function prototype:AddLine(text, dateFormat)
+	self:InsertLine(#buffers[self] + 1, text, dateFormat)
 
 	if lib.frames[self]:IsVisible() then
 		self:Display()
@@ -266,7 +267,7 @@ function prototype:Display(separator)
 	_G.ShowUIPanel(frame)
 end
 
-function prototype:InsertLine(position, text)
+function prototype:InsertLine(position, text, dateFormat)
 	if type(position) ~= "number" then
 		error(METHOD_USAGE_FORMAT:format("InsertLine", "position must be a number."))
 	end
@@ -274,7 +275,12 @@ function prototype:InsertLine(position, text)
 	if type(text) ~= "string" or text == "" then
 		error(METHOD_USAGE_FORMAT:format("InsertLine", "text must be a non-empty string."), 2)
 	end
-	table.insert(buffers[self], position, text)
+
+	if dateFormat and dateFormat ~= "" then
+		table.insert(buffers[self], position, ("[%s] %s"):format(date(dateFormat), text))
+	else
+		table.insert(buffers[self], position, text)
+	end
 end
 
 function prototype:Lines()
