@@ -1,8 +1,6 @@
 -----------------------------------------------------------------------
 -- Upvalued Lua API.
 -----------------------------------------------------------------------
-local _G = getfenv(0)
-
 -- Functions
 local date = _G.date
 local error = _G.error
@@ -64,9 +62,6 @@ local function NewInstance(width, height, useFauxScroll)
 
 	local frameName = ("%s_CopyFrame%d"):format(MAJOR, lib.num_frames)
 	local copyFrame = _G.CreateFrame("Frame", frameName, _G.UIParent, "ButtonFrameTemplate")
-	_G.ButtonFrameTemplate_HidePortrait(copyFrame)
-	_G.ButtonFrameTemplate_HideAttic(copyFrame)
-	_G.ButtonFrameTemplate_HideButtonBar(copyFrame)
 	copyFrame:SetSize(width, height)
 	copyFrame:SetPoint("CENTER", _G.UIParent, "CENTER")
 	copyFrame:SetFrameStrata("DIALOG")
@@ -74,14 +69,16 @@ local function NewInstance(width, height, useFauxScroll)
 	copyFrame:SetMovable(true)
 	copyFrame:SetToplevel(true)
 
+	_G.ButtonFrameTemplate_HidePortrait(copyFrame)
+	_G.ButtonFrameTemplate_HideAttic(copyFrame)
+	_G.ButtonFrameTemplate_HideButtonBar(copyFrame)
+
 	table.insert(_G.UISpecialFrames, frameName)
 	_G.HideUIPanel(copyFrame)
 
-
-	local titleBackground = _G[frameName.."TitleBg"]
-
 	copyFrame.title = copyFrame.TitleText
 
+	local titleBackground = _G[frameName .. "TitleBg"]
 	local dragFrame = _G.CreateFrame("Frame", nil, copyFrame)
 	dragFrame:SetPoint("TOPLEFT", titleBackground, 16, 0)
 	dragFrame:SetPoint("BOTTOMRIGHT", titleBackground)
@@ -96,35 +93,43 @@ local function NewInstance(width, height, useFauxScroll)
 	end)
 
 	local scrollArea
+
 	if useFauxScroll then
 		scrollArea = _G.CreateFrame("ScrollFrame", ("%sScroll"):format(frameName), copyFrame, "FauxScrollFrameTemplate")
 
 		function scrollArea:Update(start, wrappedLines, maxDisplayLines, lineHeight)
-			local i, linesToDisplay = start - 1, 0
+			local lineIndex = start - 1
+			local linesToDisplay = 0
+
 			repeat
-				i = i + 1
-				linesToDisplay = linesToDisplay + (wrappedLines[i] or 0)
-			until linesToDisplay > maxDisplayLines or not wrappedLines[i]
-			local stop = i - 1
+				lineIndex = lineIndex + 1
+				linesToDisplay = linesToDisplay + (wrappedLines[lineIndex] or 0)
+			until linesToDisplay > maxDisplayLines or not wrappedLines[lineIndex]
+
+			local stop = lineIndex - 1
 
 			self:Show()
+
 			local name = self:GetName()
 			local scrollBar = _G[name .. "ScrollBar"]
+
 			scrollBar:SetStepsPerPage(linesToDisplay - 1)
 
+			-- This block should only be run when the buffer is changed.
+			-- Possible variations in linesToDisplay from scroll to scroll will affect the height of the scroll frame.
+			-- This will then result in inconsistent scrolling behaviour.
 			if lineHeight then
-				--[[ This block should only be run when the buffer is changed. Possible variations in
-					linesToDisplay from scroll to scroll will affect the height of the scroll frame. This
-					will then result in inconsistent scrolling behaviour.
-				]]
 				local scrollChildFrame = _G[name .. "ScrollChildFrame"]
 
 				local scrollFrameHeight = (wrappedLines.all - linesToDisplay) * lineHeight
 				local scrollChildHeight = wrappedLines.all * lineHeight
-				if ( scrollFrameHeight < 0 ) then
+
+				if scrollFrameHeight < 0 then
 					scrollFrameHeight = 0
 				end
+
 				self.height = scrollFrameHeight
+
 				scrollChildFrame:Show()
 				scrollChildFrame:SetHeight(scrollChildHeight)
 
@@ -136,22 +141,22 @@ local function NewInstance(width, height, useFauxScroll)
 			local scrollUpButton = _G[name .. "ScrollBarScrollUpButton"]
 			local scrollDownButton = _G[name .. "ScrollBarScrollDownButton"]
 
-			if ( scrollBar:GetValue() == 0 ) then
+			if scrollBar:GetValue() == 0 then
 				scrollUpButton:Disable()
 			else
 				scrollUpButton:Enable()
 			end
-			if ((scrollBar:GetValue() - self.height) == 0) then
+
+			if scrollBar:GetValue() - self.height == 0 then
 				scrollDownButton:Disable()
 			else
 				scrollDownButton:Enable()
 			end
+
 			return start, stop
 		end
 
-		--[[ lineDummy is used to get the height of a line *after* word wrap to
-			calculate the proper scroll position of the FauxScrollFrame.
-		]]
+		-- lineDummy is used to get the height of a line *after* word wrap to calculate the proper scroll position of the FauxScrollFrame.
 		local lineDummy = copyFrame:CreateFontString()
 		lineDummy:SetJustifyH("LEFT")
 		lineDummy:SetNonSpaceWrap(true)
@@ -159,6 +164,7 @@ local function NewInstance(width, height, useFauxScroll)
 		lineDummy:SetPoint("TOPLEFT", 5, 100)
 		lineDummy:SetPoint("BOTTOMRIGHT", copyFrame, "TOPRIGHT", -28, 0)
 		lineDummy:Hide()
+
 		copyFrame.lineDummy = lineDummy
 	else
 		scrollArea = _G.CreateFrame("ScrollFrame", ("%sScroll"):format(frameName), copyFrame, "UIPanelScrollFrameTemplate")
@@ -171,6 +177,7 @@ local function NewInstance(width, height, useFauxScroll)
 			_G.ScrollFrameTemplate_OnMouseWheel(self, delta, self)
 		end)
 	end
+
 	scrollArea:SetPoint("TOPLEFT", copyFrame.Inset, 5, -5)
 	scrollArea:SetPoint("BOTTOMRIGHT", copyFrame.Inset, -27, 6)
 
@@ -189,9 +196,9 @@ local function NewInstance(width, height, useFauxScroll)
 	end)
 
 	copyFrame.edit_box = editBox
-	--[[ While using a standard scroll frame, the edit box will be positioned automatcialy
-		when set as its scrollChild. With the faux scroll, we have to position it ourself.
-	]]
+
+	-- While using a standard scroll frame, editBox will be positioned automatcialy when set as its scrollChild.
+	-- With the faux scroll, we have to position it ourself.
 	if useFauxScroll then
 		editBox:SetAllPoints(scrollArea)
 	else
@@ -297,7 +304,7 @@ function prototype:AddLine(text, dateFormat)
 	self:InsertLine(#buffers[self] + 1, text, dateFormat)
 
 	if lib.frames[self]:IsVisible() then
-		return self:Display()
+		self:Display()
 	end
 end
 
@@ -308,17 +315,20 @@ end
 
 function prototype:Display(separator)
 	local frame = frames[self]
+
 	if frame.UpdateText then
 		frame:UpdateText("Display")
 	else
-		local display_text = self:String(separator)
+		local displayText = self:String(separator)
 
-		if display_text == "" then
+		if displayText == "" then
 			error(METHOD_USAGE_FORMAT:format("Display", "buffer must be non-empty"), 2)
 		end
-		frame.edit_box:SetText(display_text)
+
+		frame.edit_box:SetText(displayText)
 		frame.edit_box:SetCursorPosition(0)
 	end
+
 	_G.ShowUIPanel(frame)
 end
 
@@ -332,6 +342,7 @@ function prototype:InsertLine(position, text, dateFormat)
 	end
 
 	local buffer = buffers[self]
+
 	if dateFormat and dateFormat ~= "" then
 		table.insert(buffer, position, ("[%s] %s"):format(date(dateFormat), text))
 	else
@@ -339,6 +350,7 @@ function prototype:InsertLine(position, text, dateFormat)
 	end
 
 	local lineDummy = frames[self].lineDummy
+
 	if lineDummy then
 		lineDummy:SetText(buffer[position])
 		table.insert(buffer.wrappedLines, position, lineDummy:GetNumLines())
@@ -351,24 +363,28 @@ function prototype:Lines()
 end
 
 function prototype:String(separator)
-	local sep_type = type(separator)
+	local separatorType = type(separator)
 
-	if sep_type ~= "nil" and sep_type ~= "string" then
+	if separatorType ~= "nil" and separatorType ~= "string" then
 		error(METHOD_USAGE_FORMAT:format("String", "separator must be nil or a string."), 2)
 	end
 
 	separator = separator or "\n"
-	local buffer, frame = buffers[self], frames[self]
+
+	local buffer = buffers[self]
+	local frame = frames[self]
 	local lineDummy = frame.lineDummy
 
 	if lineDummy then
 		local _, lineHeight = lineDummy:GetFont()
 		local maxDisplayLines = round(frame.edit_box:GetHeight() / lineHeight)
-
-		local allWrappedLines, offset = buffer.wrappedLines.all, 1
+		local allWrappedLines = buffer.wrappedLines.all
+		local offset = 1
 		local start, stop = frame.scrollArea:Update(offset, buffer.wrappedLines, maxDisplayLines, lineHeight)
+
 		function frame:UpdateText()
 			local newWrappedLines = buffer.wrappedLines.all
+
 			if newWrappedLines > allWrappedLines then
 				allWrappedLines = newWrappedLines
 				start, stop = frame.scrollArea:Update(offset, buffer.wrappedLines, maxDisplayLines, lineHeight)
@@ -376,9 +392,9 @@ function prototype:String(separator)
 				start, stop = frame.scrollArea:Update(offset, buffer.wrappedLines, maxDisplayLines)
 			end
 
-			local text = table.concat(buffer, separator, start, stop)
-			frame.edit_box:SetText(text)
+			frame.edit_box:SetText(table.concat(buffer, separator, start, stop))
 		end
+
 		frame.scrollArea:SetScript("OnVerticalScroll", function(scrollArea, value)
 			local scrollbar = scrollArea.ScrollBar
 			local _, scrollMax = scrollbar:GetMinMaxValues()
