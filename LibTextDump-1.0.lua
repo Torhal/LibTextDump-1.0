@@ -78,7 +78,7 @@ local function NewInstance(width, height, useFauxScroll)
 
 	copyFrame.title = copyFrame.TitleText
 
-	local titleBackground = _G[frameName .. "TitleBg"]
+	local titleBackground = copyFrame.TitleBg
 	local dragFrame = _G.CreateFrame("Frame", nil, copyFrame)
 	dragFrame:SetPoint("TOPLEFT", titleBackground, 16, 0)
 	dragFrame:SetPoint("BOTTOMRIGHT", titleBackground)
